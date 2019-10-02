@@ -596,7 +596,8 @@ D: PROOF testing and debugging
 
 N: Javier Lopez-Gomez
 E: jalopezg@inf.uc3m.es
-D: Cling support for redefinitions
+D: Cling support for redefinitions, Cling improvements
+D: Bug fixing
 
 N: Johan Lundberg
 E: johan.lundberg@cern.ch
