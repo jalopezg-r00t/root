@@ -36,21 +36,8 @@ namespace cling {
     MetaProcessor& m_MetaProcessor;
     bool m_IsQuitRequested;
 
-    struct DotLTransactions {
-      const Transaction* unloadPoint; // Last transaction before the `.L' command
-      Transaction* headerTransaction; // The '#include "xxx"'
-    };
-    llvm::DenseMap<const clang::FileEntry*, DotLTransactions> m_FEToTransaction;
+    llvm::DenseMap<const clang::FileEntry*, const Transaction*> m_FEToTransaction;
     llvm::DenseMap<const Transaction*, const clang::FileEntry*> m_TransactionToFE;
-
-    ///\brief Register transactions related to an external file loaded with .L.
-    /// If the file has to be unloaded, revert all transactions after the unload point.
-    void addDotLTransactionInfo(const clang::FileEntry* FE, DotLTransactions DLT) {
-      if (m_FEToTransaction.find(FE) == m_FEToTransaction.end()) {
-        m_FEToTransaction[FE] = DLT;
-        m_TransactionToFE[DLT.unloadPoint] = FE;
-      }
-    }
   public:
     enum SwitchMode {
       kOff = 0,

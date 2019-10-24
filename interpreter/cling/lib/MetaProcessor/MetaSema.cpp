@@ -30,7 +30,6 @@
 
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Basic/SourceManager.h"
-#include "clang/Basic/VirtualFileSystem.h"
 
 #include <cstdlib>
 #include <cctype>
@@ -52,19 +51,6 @@ namespace {
 		    '_');
     return ret;
   }
-
-  ///\brief Return whether the file referenced by `FE' has changed since last seen.
-  ///\param[in] FM - The clang::FileManager& that owns `FE`
-  ///\param[in] FE - The file whose timestamp will be compared
-  ///
-  static bool fileHasChanged(clang::FileManager& FM, const clang::FileEntry* FE) {
-    if (!FE)
-      return false;
-    clang::vfs::Status Stat;
-    FM.getNoncachedStatValue(FE->getName(), Stat);
-    return llvm::sys::toTimeT(Stat.getLastModificationTime())
-            > FE->getModificationTime();
-  }
 }
 
 namespace cling {
@@ -76,28 +62,15 @@ namespace cling {
     std::string pathname(m_Interpreter.lookupFileOrLibrary(file));
     if (pathname.empty())
       pathname = file;
-    clang::FileManager& FM = m_Interpreter.getSema().getSourceManager().getFileManager();
-    const auto FE = FM.getFile(pathname, /*OpenFile=*/false, /*CacheFailure=*/false);
-
-    // If the file is already loaded and its timestamp didn't change, do nothing.
-    auto TI = m_FEToTransaction.find(FE);
-    if (TI != m_FEToTransaction.end() && !fileHasChanged(FM, FE)) {
-      if (transaction)
-        *transaction = (*TI).second.headerTransaction;
-      return AR_Success;
-    }
 
     if (actOnUCommand(file) != AR_Success)
       return AR_Failure;
     // In case of libraries we get '.L lib.so', which might automatically pull in
     // decls (from header files). Thus, we want to take the restore point now.
     const Transaction* unloadPoint = m_Interpreter.getLastTransaction();
-    Transaction* headerTransaction = nullptr;
-    if (m_Interpreter.loadFile(pathname, /*allowSharedLib=*/true, &headerTransaction)
+    if (m_Interpreter.loadFile(pathname, /*allowSharedLib=*/true, transaction)
         == Interpreter::kSuccess) {
-      addDotLTransactionInfo(FE, { unloadPoint, headerTransaction });
-      if (transaction)
-        *transaction = headerTransaction;
+      registerUnloadPoint(unloadPoint, pathname);
       return AR_Success;
     }
     return AR_Failure;
@@ -224,7 +197,7 @@ namespace cling {
     if (!FE || TI == m_FEToTransaction.end())
       return AR_Success;
 
-    const Transaction* unloadPoint = (*TI).second.unloadPoint;
+    const Transaction* unloadPoint = (*TI).second;
     if (interpreterHasTransaction(m_Interpreter, unloadPoint)) {
       // Revert all the transactions that came after `unloadPoint'.
       while (m_Interpreter.getLastTransaction() != unloadPoint) {
@@ -491,6 +464,9 @@ namespace cling {
     clang::FileManager& FM = m_Interpreter.getSema().getSourceManager().getFileManager();
     const clang::FileEntry* FE = FM.getFile(pathname, /*OpenFile=*/false,
                                             /*CacheFailure=*/false);
-    addDotLTransactionInfo(FE, { unloadPoint, nullptr });
+    if (FE && !m_FEToTransaction[FE]) {
+      m_FEToTransaction[FE] = unloadPoint;
+      m_TransactionToFE[unloadPoint] = FE;
+    }
   }
 } // end namespace cling
