@@ -25,6 +25,7 @@ The following people have contributed to this new version:
  Claire Guyot, CERN/SFT,\
  Stephan Hageboeck, CERN/SFT,\
  Sergey Linev, GSI,\
+ Javier Lopez-Gomez, CERN/SFT,\
  Pere Mato, CERN/SFT,\
  Lorenzo Moneta, CERN/SFT,\
  Alja Mrak-Tadel, UCSD/CMS,\
@@ -63,6 +64,9 @@ See the discussion at [ROOT-11014](https://sft.its.cern.ch/jira/browse/ROOT-1101
 
 ### Interpreter
 - cling's LLVM is upgraded to version 9.0
+- Fixed an issue in AutoSynthesizer that either caused a `std::runtime_error` to be thrown or resulted in wrong variable initialization. See issue [#6812](https://github.com/root-project/root/issues/6812) for more details.
+- New interface to enable/disable optional cling features. Currently, it can be used to enable/disable support for redefinitions. See [this](https://github.com/root-project/cling/issues/360) issue for more information.
+- Minor fixes to the definition shadower to allow for template specialization support. See issue [#359](https://github.com/root-project/cling/issues/359).
 
 ## I/O Libraries
 
